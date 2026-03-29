@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 <robot name="qbot">
 
-  
   <link name="base_footprint"/>
 
   <link name="base_link">
@@ -45,7 +44,6 @@
     </visual>
   </link>
 
- 
   <link name="caster_front_link">
     <inertial>
       <mass value="0.2"/>
@@ -70,7 +68,6 @@
     </visual>
   </link>
 
-  
   <link name="sensor_mount_link">
     <inertial>
       <mass value="0.3"/>
@@ -95,7 +92,6 @@
     </visual>
   </link>
 
- 
   <link name="imu_link">
     <inertial>
       <mass value="0.1"/>
@@ -108,7 +104,7 @@
     </visual>
   </link>
 
-  
+  <!-- JOINTS -->
   <joint name="base_joint" type="fixed">
     <parent link="base_footprint"/>
     <child link="base_link"/>
@@ -159,11 +155,11 @@
     <origin xyz="0 0 0.1"/>
   </joint>
 
-
+  
   <ros2_control name="qbot_system" type="system">
-    <hardware>
-      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
-    </hardware>
+  <hardware>
+ <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+</hardware>
 
     <joint name="wheel_left_joint">
       <command_interface name="velocity"/>
@@ -178,40 +174,33 @@
     </joint>
   </ros2_control>
 
- 
-<gazebo reference="camera_link">
-  <sensor name="rgb_camera" type="camera">
-    <camera>
-      <horizontal_fov>1.047</horizontal_fov>
-      <image>
-        <width>640</width>
-        <height>480</height>
-      </image>
-      <clip>
-        <near>0.1</near>
-        <far>100</far>
-      </clip>
-    </camera>
-    <always_on>1</always_on>
-    <update_rate>30</update_rate>
-    <visualize>true</visualize>
-    <topic>camera/image_raw</topic>
-  </sensor>
-</gazebo>
+  <!-- CAMERA -->
+  <gazebo reference="camera_link">
+    <sensor name="rgb_camera" type="camera">
+      <camera>
+        <horizontal_fov>1.047</horizontal_fov>
+        <image>
+          <width>640</width>
+          <height>480</height>
+        </image>
+        <clip>
+          <near>0.1</near>
+          <far>100</far>
+        </clip>
+      </camera>
+      <always_on>1</always_on>
+      <update_rate>30</update_rate>
+      <visualize>true</visualize>
+      <topic>camera/image_raw</topic>
+    </sensor>
+  </gazebo>
 
   <!-- IMU -->
   <gazebo reference="imu_link">
     <sensor name="imu" type="imu">
       <always_on>true</always_on>
       <update_rate>100</update_rate>
-      <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
     </sensor>
   </gazebo>
-  <gazebo>
-  <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
-    <parameters>/home/senadi/Desktop/final-project-self-name/ros_project_ws/src/qbot_description/config/qbot_controllers.yaml</parameters>
-  </plugin>
-</gazebo>
-
 
 </robot>
