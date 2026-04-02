@@ -1,11 +1,22 @@
 apriltag:
   ros__parameters:
-    tag_family: tag36h11
-    tag_threads: 2
-    tag_decimate: 1.0
-    tag_blur: 0.0
-    tag_refine_edges: 1
-    tag_debug: 0
-    max_hamming: 0
-    tag_ids:   [0]        
-    tag_sizes: [0.165]
+    # Setup
+    image_transport: "raw"
+    family: "36h11"
+    size: 0.127  
+    
+    # Pose Estimation
+    pose_estimation_method: "pnp"
+    publish_tf: true
+    camera_frame: "camera_link"
+
+    # Specific Tag Configuration
+    tag:
+      ids: [5]
+      frames: ["36h11:5"]
+      sizes: [0.127]
+
+leader_detection:
+  ros__parameters:
+    leader_tag_id: 5
+    tag_family: "36h11"

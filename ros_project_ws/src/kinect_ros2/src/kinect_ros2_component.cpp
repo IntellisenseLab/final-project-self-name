@@ -23,17 +23,17 @@ KinectRosComponent::KinectRosComponent(const rclcpp::NodeOptions & options)
 
   //todo: use parameters
   depth_info_manager_ = std::make_shared<camera_info_manager::CameraInfoManager>(
-    this, "kinect",
+    this, "camera_link",
     "file://" + pkg_share + "/cfg/calibration_depth.yaml");
 
   rgb_info_manager_ = std::make_shared<camera_info_manager::CameraInfoManager>(
-    this, "kinect",
+    this, "camera_link",
     "file://" + pkg_share + "/cfg/calibration_rgb.yaml");
 
   rgb_info_ = rgb_info_manager_->getCameraInfo();
-  rgb_info_.header.frame_id = "kinect_rgb";
+  rgb_info_.header.frame_id = "camera_link";
   depth_info_ = depth_info_manager_->getCameraInfo();
-  depth_info_.header.frame_id = "kinect_depth";
+  depth_info_.header.frame_id = "camera_link";
 
   depth_pub_ = image_transport::create_camera_publisher(this, "depth/image_raw");
   rgb_pub_ = image_transport::create_camera_publisher(this, "image_raw");
@@ -133,37 +133,45 @@ void KinectRosComponent::rgb_cb(freenect_device * dev, void * rgb_ptr, uint32_t 
 
   _rgb_flag = true;
 }
-
 void KinectRosComponent::timer_callback()
 {
   freenect_process_events(fn_ctx_);
-  auto header = std_msgs::msg::Header();
-  header.frame_id = "kinect_depth";
-
+  
+  // 1. Create a single timestamp for this cycle
   auto stamp = now();
-  header.stamp = stamp;
-  depth_info_.header.stamp = stamp;
+  const std::string frame_id = "camera_link";
 
-  if (_depth_flag) {
-    //convert 16bit to 8bit mono
-    // cv::Mat depth_8UC1(_depth_image, CV_16UC1);
-    // depth_8UC1.convertTo(depth_8UC1, CV_8UC1);
-
-    auto msg = cv_bridge::CvImage(header, "16UC1", _depth_image).toImageMsg();
-    depth_pub_.publish(*msg, depth_info_);
-
-    // cv::imshow("Depth", _depth_image);
-    // cv::waitKey(1);
-    _depth_flag = false;
-  }
-
+  // 2. Update RGB if ready
   if (_rgb_flag) {
-    auto msg = cv_bridge::CvImage(std_msgs::msg::Header(), "rgb8", _rgb_image).toImageMsg();
+    auto rgb_header = std_msgs::msg::Header();
+    rgb_header.frame_id = frame_id;
+    rgb_header.stamp = stamp;
+
+    // Update the camera info to match the image exactly
+    rgb_info_.header.stamp = stamp;
+    rgb_info_.header.frame_id = frame_id;
+
+    // Pass the populated rgb_header instead of std_msgs::msg::Header()
+    auto msg = cv_bridge::CvImage(rgb_header, "rgb8", _rgb_image).toImageMsg();
     rgb_pub_.publish(*msg, rgb_info_);
 
-    // cv::imshow("RGB", _rgb_image);
-    // cv::waitKey(1);
     _rgb_flag = false;
+  }
+
+  // 3. Update Depth if ready
+  if (_depth_flag) {
+    auto depth_header = std_msgs::msg::Header();
+    depth_header.frame_id = frame_id;
+    depth_header.stamp = stamp;
+
+    // Update the camera info to match the image exactly
+    depth_info_.header.stamp = stamp;
+    depth_info_.header.frame_id = frame_id;
+
+    auto msg = cv_bridge::CvImage(depth_header, "16UC1", _depth_image).toImageMsg();
+    depth_pub_.publish(*msg, depth_info_);
+
+    _depth_flag = false;
   }
 }
 }

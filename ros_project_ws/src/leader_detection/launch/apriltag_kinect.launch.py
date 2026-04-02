@@ -1,27 +1,44 @@
-# launch/apriltag_kinect.launch.py
-
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
-from launch_ros.substitutions import FindPackageShare
+from ament_index_python.packages import get_package_share_directory
+import os
 
 
 def generate_launch_description():
 
-    tags_config = PathJoinSubstitution([
-        FindPackageShare('leader_detection'),  
+    # Paths
+    pkg_share = get_package_share_directory('qbot_description')
+    urdf_file = os.path.join(pkg_share, 'urdf', 'qbot.urdf')
+    tags_config = os.path.join(
+        get_package_share_directory('leader_detection'),
         'config',
         'tags.yaml'
-    ])
+    )
+
+    # Read URDF file
+    with open(urdf_file, 'r') as infp:
+        robot_desc = infp.read()
+
+    # Robot state publisher
+    robot_state_publisher_node = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        output='screen',
+        parameters=[{
+            'robot_description': robot_desc
+        }]
+    )
 
     return LaunchDescription([
 
-        DeclareLaunchArgument('leader_tag_id', default_value='0'),
-        DeclareLaunchArgument('tag_family', default_value='36h11'),
-        DeclareLaunchArgument('tag_size', default_value='0.165'),
+        # TF tree from URDF
+        robot_state_publisher_node,
 
+        # Kinect driver
         Node(
             package='kinect_ros2',
             executable='kinect_ros2_node',
@@ -29,11 +46,12 @@ def generate_launch_description():
             output='screen',
         ),
 
+        # Image rectification
         ComposableNodeContainer(
             name='image_proc_container',
             namespace='',
             package='rclcpp_components',
-            executable='component_container',
+            executable='component_container_mt',
             composable_node_descriptions=[
                 ComposableNode(
                     package='image_proc',
@@ -49,35 +67,32 @@ def generate_launch_description():
             output='screen',
         ),
 
+        # AprilTag detection
         Node(
             package='apriltag_ros',
             executable='apriltag_node',
             name='apriltag',
             remappings=[
-                ('image_rect', '/image_rect'),
+                ('image_rect', '/image_raw'),
                 ('camera_info', '/camera_info'),
             ],
-            parameters=[
-                tags_config,
-                {
-                    'family': LaunchConfiguration('tag_family'),
-                    'size': LaunchConfiguration('tag_size'),
-                },
-            ],
+            parameters=[tags_config,
+                        {'approximate_sync': True,
+                         'camera_frame': 'camera_link'},
+                        ],
             output='screen',
         ),
 
+        # Leader detection node
         Node(
-            package='leader_detection',     
-            executable='detection_node',    
+            package='leader_detection',
+            executable='detection_node',
             name='leader_detection_node',
-            parameters=[{
-                'leader_tag_id': LaunchConfiguration('leader_tag_id'),
-                'tag_family': LaunchConfiguration('tag_family'),
-            }],
+            parameters=[tags_config],
             output='screen',
         ),
 
+        # Debug viewer
         Node(
             package='rqt_image_view',
             executable='rqt_image_view',
