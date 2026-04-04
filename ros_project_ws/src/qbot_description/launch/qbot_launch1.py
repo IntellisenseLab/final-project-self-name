@@ -8,40 +8,36 @@ def generate_launch_description():
 
     package_name = 'qbot_description'
 
-    urdf_file = os.path.join(
-        get_package_share_directory(package_name),
-        'urdf',
-        'qbot.urdf'
-    )
-
-    rviz_config = os.path.join(
-        get_package_share_directory(package_name),
-        'rviz',
-        'qbot.rviz'
-    )
-
-    controller_config = os.path.join(
-        get_package_share_directory(package_name),
-        'config',
-        'qbot_controllers.yaml'
-    )
+    urdf_file = os.path.join(get_package_share_directory(package_name), 'urdf', 'qbot.urdf')
+    rviz_config = os.path.join(get_package_share_directory(package_name), 'rviz', 'qbot.rviz')
+    world_file = os.path.join(get_package_share_directory(package_name), 'sdf', 'world1.sdf')
 
     with open(urdf_file, 'r') as f:
         robot_desc = f.read()
-
-    
-    world_file = os.path.join(
-        get_package_share_directory(package_name),
-        'sdf',
-        'qbot_world.sdf'
-    )
 
     gazebo = ExecuteProcess(
         cmd=['gz', 'sim', '-r', '-v', '4', world_file],
         output='screen'
     )
 
-    # Robot state publisher
+    bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+       
+       
+       
+       
+       
+            arguments=[
+    '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+    '/robot1/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+    '/model/robot1/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+    '/imu@sensor_msgs/msg/Imu@gz.msgs.IMU',
+],
+      
+        output='screen'
+    )
+
     robot_state_publisher = Node(
         package='robot_state_publisher',
         executable='robot_state_publisher',
@@ -52,66 +48,40 @@ def generate_launch_description():
         output='screen'
     )
 
-    
-    controller_manager = Node(
-        package='controller_manager',
-        executable='ros2_control_node',
-        parameters=[controller_config, {
-            'robot_description': robot_desc,
-            'use_sim_time': True
-        }],
-        output='screen',
-        arguments=['--ros-args', '--log-level', 'info']
+    spawn_entity = Node(
+        package='ros_gz_sim',
+        executable='create',
+        arguments=[
+            '-topic', 'robot_description',
+            '-name', 'qbot',
+            '-allow_renaming', 'true'
+        ],
+        output='screen'
     )
 
     joint_state_broadcaster = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=[
-            'joint_state_broadcaster',
-            '--controller-manager',
-            '/controller_manager'
-        ],
+        arguments=['joint_state_broadcaster'],
         output='screen'
     )
 
     diff_drive_controller = Node(
         package='controller_manager',
         executable='spawner',
-        arguments=[
-            'diff_drive_controller',
-            '--controller-manager',
-            '/controller_manager'
-        ],
+        arguments=['diff_drive_controller'],
         output='screen'
     )
 
-    spawn_entity = Node(
-    package='ros_gz_sim',
-    executable='create',
-    arguments=[
-        '-topic', 'robot_description',
-        '-name', 'qbot'
-    ],
-    output='screen'
-)
-
-
-
-    spawn_delayed = TimerAction(
+    delay_spawners = TimerAction(
         period=5.0,
-        actions=[spawn_entity]
+        actions=[joint_state_broadcaster, diff_drive_controller]
     )
 
-    
-    bridge = Node(
-        package='ros_gz_bridge',
-        executable='parameter_bridge',
-        arguments=[
-            '/clock@rosgraph_msgs/msg/Clock@gz.msgs.Clock',
-            '/imu@sensor_msgs/msg/Imu@gz.msgs.IMU',
-            '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist'
-        ],
+    teleop = Node(
+        package='teleop_twist_keyboard',
+        executable='teleop_twist_keyboard',
+        remappings=[('cmd_vel', '/cmd_vel')],
         output='screen'
     )
 
@@ -123,24 +93,58 @@ def generate_launch_description():
         output='screen'
     )
 
+    slam_node = Node(
+        package='slam_toolbox',
+        executable='async_slam_toolbox_node',
+        name='slam_toolbox',
+        output='screen',
+        parameters=[
+            os.path.join(get_package_share_directory(package_name), 'config', 'slam.yaml'),
+            {
+                'use_sim_time': True,
+                'odom_frame': 'odom',
+                'base_frame': 'base_footprint',
+                'map_frame': 'map',
+                'scan_topic': 'scan',
+                'mode': 'mapping',
+                'transform_publish_period': 0.02,
+            }
+        ],
+    )
+
+    slam_configure = TimerAction(
+        period=8.0,
+        actions=[
+            ExecuteProcess(
+                cmd=['ros2', 'lifecycle', 'set', 'slam_toolbox', 'configure'],
+                output='screen'
+            )
+        ]
+    )
+
+    slam_activate = TimerAction(
+        period=12.0,
+        actions=[
+            ExecuteProcess(
+                cmd=['ros2', 'lifecycle', 'set', 'slam_toolbox', 'activate'],
+                output='screen'
+            )
+        ]
+    )
+
     return LaunchDescription([
         SetEnvironmentVariable(
             'GZ_SIM_RESOURCE_PATH',
             get_package_share_directory(package_name)
         ),
-
         gazebo,
-
-        robot_state_publisher,
-
-        controller_manager,
-
-        spawn_delayed,
-
-        joint_state_broadcaster,
-        diff_drive_controller,
-
         bridge,
-
+        robot_state_publisher,
+        spawn_entity,
+        delay_spawners,
+        teleop,
+        slam_node,
+        slam_configure,
+        slam_activate,
         rviz
     ])
