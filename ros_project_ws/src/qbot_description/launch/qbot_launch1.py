@@ -30,8 +30,8 @@ def generate_launch_description():
        
             arguments=[
     '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
-    '/robot1/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
-    '/model/robot1/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
+    '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
+    '/odometry@nav_msgs/msg/Odometry[gz.msgs.Odometry',
     '/imu@sensor_msgs/msg/Imu@gz.msgs.IMU',
 ],
       
