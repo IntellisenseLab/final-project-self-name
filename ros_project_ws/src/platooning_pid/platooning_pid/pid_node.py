@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist, PoseStamped
 import math
+from std_msgs.msg import Bool
  
  
 class PIDController:
@@ -89,6 +90,12 @@ class PIDControllerNode(Node):
             self.pose_callback,
             10
         )
+        self.emergency_stop_sub = self.create_subscription(
+            Bool,
+            '/emergency_stop',
+            self.emergency_stop_callback,
+            10
+        )
  
         # Publisher
         self.cmd_vel_pub = self.create_publisher(Twist, '/cmd_vel', 10)
@@ -105,6 +112,11 @@ class PIDControllerNode(Node):
     def pose_callback(self, msg: PoseStamped):
         """Receive leader pose from detection node."""
         self.leader_pose = msg
+
+    def emergency_stop_callback(self, msg: Bool):
+        self.emergency_stop = msg.data
+        if self.emergency_stop:
+            self.get_logger().warn('Emergency stop received - Stopping!')
  
     def compute_errors(self, pose: PoseStamped) -> tuple[float, float]:
         """
@@ -131,10 +143,11 @@ class PIDControllerNode(Node):
  
         cmd = Twist()
  
-        # If no leader pose received yet, or emergency stop, publish zero velocity
-        if self.leader_pose is None or self.emergency_stop:
-            if self.leader_pose is None:
-                self.get_logger().warn('No leader pose received, staying still', throttle_duration_sec=2.0)
+        if self.emergency_stop:
+            return  # Safety monitor has control — don't publish anything
+
+        if self.leader_pose is None:
+            self.get_logger().warn('No leader pose received, staying still', throttle_duration_sec=2.0)
             self.cmd_vel_pub.publish(cmd)
             return
  
