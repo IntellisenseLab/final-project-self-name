@@ -1,0 +1,122 @@
+<?xml version="1.0" ?>
+<sdf version="1.8">
+    <model name='qbot' canonical_link='base_link'>
+        <pose>0 0 0 0 0 0</pose>
+
+        <!-- ROS2 Control Plugin -->
+        <plugin name="gz_ros2_control::GazeboSimROS2ControlPlugin" filename="libgz_ros2_control-system.so">
+            <parameters>/home/senadi/Desktop/lab-06-SenadiF/CS3340-Workspace/src/qbot_description/config/qbot_controllers.yaml</parameters>
+            <controller_manager_prefix_node_name>robot1</controller_manager_prefix_node_name>
+        </plugin>
+
+        <ros2_control name="qbot_system" type="system">
+            <hardware>
+                <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+            </hardware>
+            <joint name="wheel_left_joint">
+                <command_interface name="velocity"><param name="min">-10</param><param name="max">10</param></command_interface>
+                <state_interface name="position"/><state_interface name="velocity"/>
+            </joint>
+            <joint name="wheel_right_joint">
+                <command_interface name="velocity"><param name="min">-10</param><param name="max">10</param></command_interface>
+                <state_interface name="position"/><state_interface name="velocity"/>
+            </joint>
+        </ros2_control>
+
+        <!-- Base Link -->
+        <link name='base_link'>
+            <pose>0 0 0.05949 0 0 0</pose>
+            <inertial>
+                <mass>2.4</mass>
+                <inertia>
+                    <ixx>0.019995</ixx><ixy>0</ixy><ixz>0</ixz>
+                    <iyy>0.019995</iyy><iyz>0</iyz><izz>0.03675</izz>
+                </inertia>
+            </inertial>
+            <visual name='base_visual'>
+                <geometry><cylinder><radius>0.178</radius><length>0.10938</length></cylinder></geometry>
+                <material><ambient>0.0 0.0 0.8 1</ambient><diffuse>0.0 0.0 0.8 1</diffuse><specular>1 1 1 1</specular></material>
+            </visual>
+            <collision name='base_collision'>
+                <geometry><cylinder><radius>0.178</radius><length>0.10938</length></cylinder></geometry>
+            </collision>
+        </link>
+
+        <!-- Left Wheel -->
+        <link name='wheel_left_link'>
+            <pose relative_to='base_link'>0 0.193 -0.0245 -1.570796 0 0</pose>
+            <inertial><mass>0.1</mass><inertia><ixx>0.001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.001</iyy><iyz>0</iyz><izz>0.001</izz></inertia></inertial>
+            <visual name='wheel_left_visual'>
+                <geometry><cylinder><radius>0.05</radius><length>0.03</length></cylinder></geometry>
+                <material><ambient>0.8 0.0 0.0 1</ambient><diffuse>0.8 0.0 0.0 1</diffuse></material>
+            </visual>
+            <collision name='wheel_left_collision'>
+                <geometry><cylinder><radius>0.05</radius><length>0.03</length></cylinder></geometry>
+            </collision>
+        </link>
+
+        <!-- Right Wheel -->
+        <link name='wheel_right_link'>
+            <pose relative_to='base_link'>0 -0.193 -0.0245 -1.570796 0 0</pose>
+            <inertial><mass>0.1</mass><inertia><ixx>0.001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.001</iyy><iyz>0</iyz><izz>0.001</izz></inertia></inertial>
+            <visual name='wheel_right_visual'>
+                <geometry><cylinder><radius>0.05</radius><length>0.03</length></cylinder></geometry>
+                <material><ambient>0.0 0.8 0.0 1</ambient><diffuse>0.0 0.8 0.0 1</diffuse></material>
+            </visual>
+            <collision name='wheel_right_collision'>
+                <geometry><cylinder><radius>0.05</radius><length>0.03</length></cylinder></geometry>
+            </collision>
+        </link>
+
+        <!-- Lidar Link and Sensor -->
+        <link name='lidar_link'>
+            <pose relative_to='base_link'>0 0 0.1 0 0 0</pose>
+            <visual name='lidar_visual'>
+                <geometry><cylinder><radius>0.03</radius><length>0.04</length></cylinder></geometry>
+            </visual>
+            <sensor name='gpu_lidar' type='gpu_lidar'>
+                <pose>0 0 0 0 0 0</pose>
+                <topic>/robot1/scan</topic>
+                <gz_frame_id>robot1/lidar_link</gz_frame_id>
+                <update_rate>10</update_rate>
+                <lidar>
+                    <scan><horizontal><samples>640</samples><resolution>1</resolution><min_angle>-3.14</min_angle><max_angle>3.14</max_angle></horizontal></scan>
+                    <range><min>0.1</min><max>10.0</max></range>
+                </lidar>
+                <always_on>1</always_on>
+                <visualize>true</visualize>
+            </sensor>
+        </link>
+
+        <!-- Physical Joints -->
+        <joint name='wheel_left_joint' type='revolute'>
+            <parent>base_link</parent><child>wheel_left_link</child>
+            <axis><xyz>0 0 1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+        </joint>
+
+        <joint name='wheel_right_joint' type='revolute'>
+            <parent>base_link</parent><child>wheel_right_link</child>
+            <axis><xyz>0 0 1</xyz><limit><lower>-1e16</lower><upper>1e16</upper></limit></axis>
+        </joint>
+
+        <joint name='lidar_joint' type='fixed'>
+            <parent>base_link</parent><child>lidar_link</child>
+        </joint>
+
+        <!-- Casters  -->
+        <link name='caster_front_link'>
+            <pose relative_to='base_link'>0.115 0 -0.0485 0 0 0</pose>
+            <visual name='v'><geometry><sphere><radius>0.025</radius></sphere></geometry></visual>
+            <collision name='c'><geometry><sphere><radius>0.025</radius></sphere></geometry></collision>
+        </link>
+        <joint name='caster_front_joint' type='ball'><parent>base_link</parent><child>caster_front_link</child></joint>
+
+        <link name='caster_back_link'>
+            <pose relative_to='base_link'>-0.135 0 -0.0485 0 0 0</pose>
+            <visual name='v'><geometry><sphere><radius>0.025</radius></sphere></geometry></visual>
+            <collision name='c'><geometry><sphere><radius>0.025</radius></sphere></geometry></collision>
+        </link>
+        <joint name='caster_back_joint' type='ball'><parent>base_link</parent><child>caster_back_link</child></joint>
+
+    </model>
+</sdf>
