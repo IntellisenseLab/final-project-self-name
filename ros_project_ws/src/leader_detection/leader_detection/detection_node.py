@@ -91,7 +91,6 @@ class LeaderDetectionNode(Node):
             )
 
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-            # This is common if the TF tree hasn't updated yet
             self.get_logger().debug(f'TF Lookup failed: {str(e)}')
 
 def main(args=None):
