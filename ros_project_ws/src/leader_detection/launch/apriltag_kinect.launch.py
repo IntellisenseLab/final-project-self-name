@@ -101,12 +101,4 @@ def generate_launch_description():
             output='screen',
         ),
 
-
-        Node(
-            package='platooning_pid',
-            executable='pid_node',
-            name='pid_controller',
-            output='screen'
-        )
-
     ])
