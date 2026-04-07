@@ -135,7 +135,7 @@ class PIDControllerNode(Node):
         actual_distance = math.sqrt(x**2 + y**2 + z**2)
         distance_error = actual_distance - self.desired_distance
 
-        angular_error = math.atan2(y, x)
+        angular_error = math.atan2(x, z)
 
         return distance_error, angular_error
 

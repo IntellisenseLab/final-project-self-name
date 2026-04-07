@@ -63,7 +63,7 @@ class LeaderDetectionNode(Node):
                 self.base_frame,
                 tag_frame,
                 Time(),
-                Duration(seconds=0.1)
+                Duration(seconds=0.5)
             )
 
             #Construct the PoseStamped message
