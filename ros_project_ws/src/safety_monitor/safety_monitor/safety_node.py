@@ -81,7 +81,8 @@ class SafetyMonitor(Node):
         # Check if leader is too close
         x = msg.pose.position.x
         y = msg.pose.position.y
-        distance = math.sqrt(x**2 + y**2)
+        z = msg.pose.position.z
+        distance = math.sqrt(x**2 + y**2 + z**2) 
  
         self.leader_too_close = distance < self.min_following_distance
  

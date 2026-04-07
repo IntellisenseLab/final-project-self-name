@@ -61,9 +61,12 @@ class PIDControllerNode(Node):
 
         self.declare_parameter('control_frequency', 20.0)
 
+        self.declare_parameter('pose_timeout', 2.0)  # seconds
+
         # Read parameters
         self.desired_distance = self.get_parameter('desired_distance').value
         self.control_frequency = self.get_parameter('control_frequency').value
+        self.pose_timeout = self.get_parameter('pose_timeout').value
 
         # PID controllers
         self.linear_pid = PIDController(
@@ -155,7 +158,7 @@ class PIDControllerNode(Node):
 
         # Timeout check
         time_since_last = (now - self.last_pose_time).nanoseconds / 1e9
-        if time_since_last > 0.5:
+        if time_since_last > self.pose_timeout:
             self.get_logger().warn('Leader lost - stopping')
             self.cmd_vel_pub.publish(cmd)
             self.linear_pid.reset()

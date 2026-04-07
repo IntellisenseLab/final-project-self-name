@@ -1,0 +1,96 @@
+from launch import LaunchDescription
+from launch.actions import SetEnvironmentVariable
+from launch_ros.actions import Node, ComposableNodeContainer
+from launch_ros.descriptions import ComposableNode
+from ament_index_python.packages import get_package_share_directory
+import os
+ 
+ 
+def generate_launch_description():
+ 
+    tags_config = os.path.join(
+        get_package_share_directory('leader_detection'),
+        'config',
+        'tags.yaml'
+    )
+ 
+    return LaunchDescription([
+ 
+        # Ensure same ROS domain as Pi ----> VERY IMPORTANT
+        SetEnvironmentVariable('ROS_DOMAIN_ID', '42'),
+ 
+        # Image rectification (processing on laptop)
+        ComposableNodeContainer(
+            name='image_proc_container',
+            namespace='',
+            package='rclcpp_components',
+            executable='component_container_mt',
+            composable_node_descriptions=[
+                ComposableNode(
+                    package='image_proc',
+                    plugin='image_proc::RectifyNode',
+                    name='rectify_rgb',
+                    remappings=[
+                        ('image', '/image_raw'),
+                        ('camera_info', '/camera_info'),
+                        ('image_rect', '/image_rect'),
+                    ],
+                ),
+            ],
+            output='screen',
+        ),
+ 
+        # AprilTag detection
+        Node(
+            package='apriltag_ros',
+            executable='apriltag_node',
+            name='apriltag',
+            remappings=[
+                ('image_rect', '/image_raw'),
+                ('camera_info', '/camera_info'),
+            ],
+            parameters=[
+                tags_config,
+                {
+                    'approximate_sync': True,
+                    'camera_frame': 'camera_link'
+                }
+            ],
+            output='screen',
+        ),
+ 
+        # Leader detection node
+        Node(
+            package='leader_detection',
+            executable='detection_node',
+            name='leader_detection_node',
+            parameters=[tags_config],
+            output='screen',
+        ),
+ 
+        # PID controller
+        Node(
+            package='platooning_pid',
+            executable='pid_node',
+            name='pid_controller',
+            output='screen',
+        ),
+ 
+        # Safety monitor
+        Node(
+            package='safety_monitor',
+            executable='safety_monitor',
+            name='safety_monitor',
+            output='screen',
+        ),
+ 
+        # Debug image viewer
+        Node(
+            package='rqt_image_view',
+            executable='rqt_image_view',
+            name='rqt_image_view',
+            arguments=['/image_raw'],
+            output='screen',
+        ),
+ 
+    ])
