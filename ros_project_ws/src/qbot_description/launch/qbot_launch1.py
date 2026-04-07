@@ -79,11 +79,13 @@ def generate_launch_description():
     )
 
     teleop = Node(
-        package='teleop_twist_keyboard',
-        executable='teleop_twist_keyboard',
-        remappings=[('cmd_vel', '/cmd_vel')],
-        output='screen'
-    )
+    package='teleop_twist_keyboard',
+    executable='teleop_twist_keyboard',
+    remappings=[
+        ('cmd_vel', '/diff_drive_controller/cmd_vel')
+    ],
+    output='screen'
+)
 
     rviz = Node(
         package='rviz2',
