@@ -175,7 +175,7 @@ class PIDControllerNode(Node):
             angular_error = 0.0
 
         # Angular control
-        cmd.angular.z = self.angular_pid.compute(angular_error, dt)
+        cmd.angular.z = -self.angular_pid.compute(angular_error, dt)
 
         angle_threshold = 0.3  # radians
 
