@@ -82,7 +82,7 @@ class SafetyMonitor(Node):
         x = msg.pose.position.x
         y = msg.pose.position.y
         z = msg.pose.position.z
-        distance = math.sqrt(x**2 + y**2 + z**2)
+        distance = math.sqrt(x**2 + y**2 + z**2) 
  
         self.leader_too_close = distance < self.min_following_distance
  

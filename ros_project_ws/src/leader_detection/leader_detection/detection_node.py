@@ -12,6 +12,8 @@ from geometry_msgs.msg import PoseStamped
 import tf2_ros
 import tf2_geometry_msgs 
 
+from rclpy.time import Time
+
 class LeaderDetectionNode(Node):
     def __init__(self):
         super().__init__('leader_detection_node')
@@ -60,8 +62,8 @@ class LeaderDetectionNode(Node):
             t = self.tf_buffer.lookup_transform(
                 self.base_frame,
                 tag_frame,
-                msg.header.stamp,
-                Duration(seconds=0.1)
+                Time(),
+                Duration(seconds=0.5)
             )
 
             #Construct the PoseStamped message
