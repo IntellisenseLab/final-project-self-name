@@ -1,9 +1,9 @@
 from launch import LaunchDescription
-from launch_ros.actions import Node, ComposableNodeContainer
-from launch_ros.descriptions import ComposableNode
+from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 import os
- 
+import yaml
+from launch.substitutions import LaunchConfiguration
  
 def generate_launch_description():
  
@@ -14,7 +14,13 @@ def generate_launch_description():
         'config',
         'tags.yaml'
     )
- 
+    
+    package_dir = get_package_share_directory('platooning_bringup')
+    params_file = os.path.join(package_dir, 'config', 'kobuki_node_params.yaml')
+
+    with open(params_file, 'r') as f:
+        kobuki_params = yaml.safe_load(f)['kobuki_ros_node']['ros__parameters']
+
     with open(urdf_file, 'r') as f:
         robot_desc = f.read()
  
@@ -84,10 +90,11 @@ def generate_launch_description():
         Node(
             package='kobuki_node',
             executable='kobuki_ros_node',
-            name='kobuki',
+            namespace=LaunchConfiguration('namespace'),
             output='screen',
-            parameters=[{
-                'device_port': '/dev/kobuki'  # udev rule creates this symlink
-            }]
-        ),
+            parameters=[kobuki_params],
+            remappings=[
+                ('/commands/velocity', '/cmd_vel')
+            ]
+)
     ])
