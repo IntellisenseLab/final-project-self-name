@@ -15,7 +15,7 @@ def generate_launch_description():
         'tags.yaml'
     )
     
-    package_dir = get_package_share_directory('platooning_bringup')
+    package_dir = get_package_share_directory('leader_detection')
     params_file = os.path.join(package_dir, 'config', 'kobuki_node_params.yaml')
 
     with open(params_file, 'r') as f:
@@ -90,11 +90,11 @@ def generate_launch_description():
         Node(
             package='kobuki_node',
             executable='kobuki_ros_node',
-            namespace=LaunchConfiguration('namespace'),
+            # namespace=LaunchConfiguration('namespace'),
             output='screen',
             parameters=[kobuki_params],
             remappings=[
                 ('/commands/velocity', '/cmd_vel')
             ]
-)
+        )
     ])

@@ -24,7 +24,7 @@ class SafetyMonitor(Node):
         self.declare_parameter('obstacle_distance', 0.4)        # metres — obstacle ahead
         self.declare_parameter('leader_timeout', 3.0)           # seconds before declaring leader lost
         self.declare_parameter('recovery_rotation_time', 30.0)   # seconds to rotate before giving up
-        self.declare_parameter('recovery_angular_speed', 0.6)   # rad/s rotation speed during recovery
+        self.declare_parameter('recovery_angular_speed', 5.0)   # rad/s rotation speed during recovery
         self.declare_parameter('monitor_frequency', 10.0)       # Hz
  
         self.min_following_distance = self.get_parameter('min_following_distance').value
@@ -71,7 +71,8 @@ class SafetyMonitor(Node):
         self.get_logger().info(
             f'Min following distance: {self.min_following_distance}m | '
             f'Obstacle threshold: {self.obstacle_distance}m | '
-            f'Leader timeout: {self.leader_timeout}s'
+            f'Leader timeout: {self.leader_timeout}s |'
+            f'Recovery speed: {self.recovery_angular_speed}'
         )
  
     def pose_callback(self, msg: PoseStamped):

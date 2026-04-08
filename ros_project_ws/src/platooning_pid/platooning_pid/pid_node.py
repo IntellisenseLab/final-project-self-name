@@ -57,7 +57,7 @@ class PIDControllerNode(Node):
         self.declare_parameter('angular_kp', 1.5)
         self.declare_parameter('angular_ki', 0.0)
         self.declare_parameter('angular_kd', 0.2)
-        self.declare_parameter('max_angular_speed', 1.5)
+        self.declare_parameter('max_angular_speed', 5.0)
 
         self.declare_parameter('control_frequency', 20.0)
 
