@@ -80,4 +80,14 @@ def generate_launch_description():
             name='safety_monitor',
             output='screen',
         ),
+
+        Node(
+            package='kobuki_node',
+            executable='kobuki_ros_node',
+            name='kobuki',
+            output='screen',
+            parameters=[{
+                'device_port': '/dev/kobuki'  # udev rule creates this symlink
+            }]
+        ),
     ])
