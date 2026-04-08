@@ -71,13 +71,13 @@ def generate_launch_description():
             output='screen',
         ),
 
-        # # Debug viewer
-        # Node(
-        #     package='rqt_image_view',
-        #     executable='rqt_image_view',
-        #     name='rqt_depth_view',
-        #     arguments=['/depth/image_raw'],
-        #     output='screen',
-        # ),
+        # Debug viewer
+        Node(
+            package='rqt_image_view',
+            executable='rqt_image_view',
+            name='rqt_depth_view',
+            arguments=['/depth/image_raw'],
+            output='screen',
+        ),
 
     ])

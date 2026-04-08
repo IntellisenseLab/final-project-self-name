@@ -36,27 +36,7 @@ def generate_launch_description():
             name='kinect_ros2',
             output='screen',
         ),
- 
-        # Image rectification
-        ComposableNodeContainer(
-            name='image_proc_container',
-            namespace='',
-            package='rclcpp_components',
-            executable='component_container_mt',
-            composable_node_descriptions=[
-                ComposableNode(
-                    package='image_proc',
-                    plugin='image_proc::RectifyNode',
-                    name='rectify_rgb',
-                    remappings=[
-                        ('image', '/image_raw'),
-                        ('camera_info', '/camera_info'),
-                        ('image_rect', '/image_rect'),
-                    ],
-                ),
-            ],
-            output='screen',
-        ),
+
  
         # AprilTag detection
         Node(
@@ -103,12 +83,12 @@ def generate_launch_description():
         ),
  
         # Debug image viewer
-        Node(
-            package='rqt_image_view',
-            executable='rqt_image_view',
-            name='rqt_image_view',
-            arguments=['/image_raw'],
-            output='screen',
-        ),
+        # Node(
+        #     package='rqt_image_view',
+        #     executable='rqt_image_view',
+        #     name='rqt_image_view',
+        #     arguments=['/image_raw'],
+        #     output='screen',
+        # ),
  
     ])
