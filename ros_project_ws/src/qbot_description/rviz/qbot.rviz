@@ -58,7 +58,7 @@ Visualization Manager:
     - Alpha: 1
       Class: rviz_default_plugins/RobotModel
       Collision Enabled: false
-      Description File: /home/senadi/Desktop/lab-04-SenadiF/CS3340-Workspace/src/qbot_description/urdf/qbot.urdf
+      Description File: ""
       Description Source: Topic
       Description Topic:
         Depth: 5
@@ -288,7 +288,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: odom
+    Fixed Frame: map
     Frame Rate: 30
   Name: root
   Tools:

@@ -26,5 +26,8 @@ install(
   DIRECTORY urdf launch rviz sdf config maps
   DESTINATION share/${PROJECT_NAME}  
 )
+install(PROGRAMS scripts/twist_to_stamped.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 ament_package()

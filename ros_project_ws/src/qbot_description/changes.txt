@@ -1,0 +1,9 @@
+stamped velocity mismatch
+Issue 2 — use_stamped_vel: true in controller config (likely the main error)
+In qbot_controllers.yaml:
+    use_stamped_vel: true
+But in nav2_params.yaml the collision monitor and velocity smoother have:
+    enable_stamped_cmd_vel: false
+These are contradicting each other. Nav2 is publishing unstamped Twist but the diff drive controller expects stamped TwistStamped. This mismatch almost certainly causes the controller server errors. Change the controller config to:
+    use_stamped_vel: false
+

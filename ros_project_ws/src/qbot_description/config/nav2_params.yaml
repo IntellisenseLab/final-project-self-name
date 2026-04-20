@@ -44,7 +44,7 @@ bt_navigator:
     use_sim_time: True
     global_frame: map
     robot_base_frame: base_footprint
-    odom_topic: /odom
+    odom_topic: /diff_drive_controller/odom
     bt_loop_duration: 10
     default_server_timeout: 20
     wait_for_service_timeout: 1000
@@ -109,7 +109,7 @@ planner_server:
 behavior_server:
   ros__parameters:
     use_sim_time: True
-    enable_stamped_cmd_vel: true
+    enable_stamped_cmd_vel: false
     local_costmap_topic: local_costmap/costmap_raw
     global_costmap_topic: global_costmap/costmap_raw
     local_footprint_topic: local_costmap/published_footprint
@@ -238,3 +238,23 @@ global_costmap:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
         inflation_radius: 0.55
+
+docking_server:
+  ros__parameters:
+    use_sim_time: True
+    dock_plugins: []
+    dock_database: ''
+
+lifecycle_manager_navigation:
+  ros__parameters:
+    use_sim_time: True
+    autostart: True
+    node_names:
+      - controller_server
+      - smoother_server
+      - planner_server
+      - behavior_server
+      - velocity_smoother
+      - collision_monitor
+      - bt_navigator
+      - waypoint_follower

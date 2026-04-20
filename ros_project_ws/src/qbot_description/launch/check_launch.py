@@ -15,12 +15,19 @@ def generate_launch_description():
     nav2_params_path = os.path.join(package_dir, 'config', 'nav2_params.yaml')
     slam_config_path = os.path.join(package_dir, 'config', 'mapper_params_online_async.yaml')
    
-    world = "/home/senadi/Desktop/final-project-self-name/ros_project_ws/src/qbot_description/sdf/world1.sdf"
+    world = os.path.join(package_dir, 'sdf', 'world1.sdf')
     map_file = "/home/senadi/Desktop/final-project-self-name/ros_project_ws/src/qbot_description/maps/map_name.yaml"
+    map_file = os.path.join(package_dir, 'maps', 'map_name.yaml')
 
     with open(urdf_file, 'r') as file:
         robot_description = file.read()
    
+
+    # Fix hardcoded path in URDF
+    robot_description = robot_description.replace(
+        '/home/senadi/Desktop/final-project-self-name/ros_project_ws/src/qbot_description/config/qbot_controllers.yaml',
+        robot_controllers
+    )
     """
     slam_node = Node(
         package='slam_toolbox',
@@ -69,12 +76,18 @@ def generate_launch_description():
             'use_sim_time': 'True',
             'map': map_file,
             'params_file': nav2_params_path,
-            'use_composition': 'True',
+            'use_composition': 'False',
+            'autostart': 'True',
         }.items()
     )
-
+    
     return LaunchDescription([
         SetEnvironmentVariable('GZ_SIM_RESOURCE_PATH', package_dir),
+
+        SetEnvironmentVariable(
+            'GZ_SIM_SYSTEM_PLUGIN_PATH',
+            '/opt/ros/jazzy/lib'
+        ),
 
         Node(
             package='robot_state_publisher',
@@ -107,7 +120,8 @@ def generate_launch_description():
                 '/cmd_vel@geometry_msgs/msg/Twist[gz.msgs.Twist'
             ],
             remappings=[
-                ('/cmd_vel', '/diff_drive_controller/cmd_vel')
+                ('/cmd_vel', '/diff_drive_controller/cmd_vel'),
+                (('/odometry', '/odom'))
             ],
             output='screen'
         ),
