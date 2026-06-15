@@ -173,13 +173,13 @@
 
   <joint name="lidar_joint" type="fixed">
   <parent link="base_link"/>
-  <child link="lidar_link"/>
+  <child link="base_laser"/>
   <origin xyz="0 0 0.12" rpy="0 0 0"/>
 </joint>
 
-   <gazebo reference="lidar_link">
+   <gazebo reference="base_laser">
    <sensor name="lidar" type="gpu_lidar">
-     <gz_frame_id>lidar_link</gz_frame_id> 
+     <gz_frame_id>base_laser</gz_frame_id> 
      <topic>scan</topic>
      <update_rate>10</update_rate>
      <ray>
