@@ -115,7 +115,7 @@
     </visual>
   </link>
 
- <link name="lidar_link">
+ <link name="base_laser">
   <visual>
     <geometry><cylinder radius="0.03" length="0.05"/></geometry>
   </visual>

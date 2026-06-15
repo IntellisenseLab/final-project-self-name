@@ -96,5 +96,33 @@ def generate_launch_description():
             remappings=[
                 ('/commands/velocity', '/cmd_vel')
             ]
-        )
+        ),
+        # LiDAR driver
+        Node(
+            package='ldlidar_ros2',
+            executable='ldlidar_ros2_node',
+            name='ldlidar_ros2_node',
+            output='screen',
+            parameters=[{
+                'product_name': 'LDLiDAR_LD19',
+                'laser_scan_topic_name': 'scan',
+                'point_cloud_2d_topic_name': 'pointcloud2d',
+                'frame_id': 'base_laser',
+                'port_name': '/dev/ldlidar',
+                'serial_baudrate': 230400,
+                'laser_scan_dir': True,
+                'enable_angle_crop_func': False,
+                'range_min': 0.02,
+                'range_max': 12.0,
+            }]
+        ),
+
+        # Static transform — base_link to lidar
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='base_link_to_base_laser',
+            arguments=['0', '0', '0.18', '0', '0', '0', 'base_link', 'base_laser'],
+            output='screen',
+        ),
     ])
