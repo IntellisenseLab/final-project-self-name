@@ -124,7 +124,8 @@ class PIDControllerNode(Node):
         self.emergency_stop = msg.data
         if self.emergency_stop:
             self.get_logger().warn('Emergency STOP activated!')
-            self.cmd_vel_pub.publish(Twist())
+            self.linear_pid.reset()
+            self.angular_pid.reset()
 
     def compute_errors(self, pose: PoseStamped):
         x = pose.pose.position.x
@@ -148,7 +149,6 @@ class PIDControllerNode(Node):
 
         # Emergency stop
         if self.emergency_stop:
-            self.cmd_vel_pub.publish(cmd)
             return
 
         if self.leader_pose is None:

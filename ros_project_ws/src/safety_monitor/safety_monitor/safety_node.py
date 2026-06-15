@@ -23,8 +23,8 @@ class SafetyMonitor(Node):
         self.declare_parameter('min_following_distance', 0.3)   # metres — too close to leader
         self.declare_parameter('obstacle_distance', 0.4)        # metres — obstacle ahead
         self.declare_parameter('leader_timeout', 3.0)           # seconds before declaring leader lost
-        self.declare_parameter('recovery_rotation_time', 30.0)   # seconds to rotate before giving up
-        self.declare_parameter('recovery_angular_speed', 5.0)   # rad/s rotation speed during recovery
+        self.declare_parameter('recovery_rotation_time', 15.0)   # seconds to rotate before giving up
+        self.declare_parameter('recovery_angular_speed', 1.0)   # rad/s rotation speed during recovery
         self.declare_parameter('monitor_frequency', 10.0)       # Hz
  
         self.min_following_distance = self.get_parameter('min_following_distance').value
