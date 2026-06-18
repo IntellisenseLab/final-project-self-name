@@ -18,6 +18,7 @@ class SafetyMonitor(Node):
     STATE_RECOVERING = 'recovering'     # Rotating to reacquire leader
     STATE_LOST = 'lost'                 # Leader lost after recovery failed
     STATE_RETURNING = 'returning'       # Navigating back to home position
+    STATE_ARRIVED = 'arrived'           # Safely back at home, resting <-- Added State
 
     def __init__(self):
         super().__init__('safety_monitor')
@@ -88,12 +89,6 @@ class SafetyMonitor(Node):
         )
 
         self.get_logger().info('Safety monitor started')
-        self.get_logger().info(
-            f'Min following distance: {self.min_following_distance}m | '
-            f'Obstacle threshold: {self.obstacle_distance}m | '
-            f'Leader timeout: {self.leader_timeout}s | '
-            f'Recovery speed: {self.recovery_angular_speed}'
-        )
 
     def amcl_callback(self, msg: PoseWithCovarianceStamped):
         """Save first received AMCL pose as home position in map frame."""
@@ -120,14 +115,8 @@ class SafetyMonitor(Node):
 
         self.leader_too_close = distance < self.min_following_distance
 
-        if self.leader_too_close:
-            self.get_logger().warn(
-                f'Leader too close: {distance:.3f}m (min: {self.min_following_distance}m)',
-                throttle_duration_sec=1.0
-            )
-
-        # If we were recovering/lost/returning and now see the leader, resume following
-        if self.state in (self.STATE_RECOVERING, self.STATE_LOST, self.STATE_RETURNING):
+        # If we see the leader, reset completely and return to following
+        if self.state in (self.STATE_RECOVERING, self.STATE_LOST, self.STATE_RETURNING, self.STATE_ARRIVED):
             self.get_logger().info('Leader reacquired — resuming following')
             if self.state == self.STATE_RETURNING:
                 self.cancel_navigation()
@@ -137,49 +126,32 @@ class SafetyMonitor(Node):
             self.publish_emergency_stop(False)
 
     def depth_callback(self, msg: Image):
-        """Store latest depth image for obstacle checking."""
         self.latest_depth_image = msg
 
     def check_obstacle(self) -> bool:
         if self.latest_depth_image is None:
             return False
-
         try:
-            # Kinect v1 publishes 16UC1 depth in millimetres
             depth_data = np.frombuffer(self.latest_depth_image.data, dtype=np.uint16)
             depth_array = depth_data.reshape(
                 self.latest_depth_image.height,
                 self.latest_depth_image.width
-            ).astype(np.float32) / 1000.0  # convert mm to metres
+            ).astype(np.float32) / 1000.0
 
-            # Look at the central 30% of the image — directly ahead of robot
             h, w = depth_array.shape
             center_region = depth_array[
                 int(h * 0.35):int(h * 0.65),
                 int(w * 0.35):int(w * 0.65)
             ]
-
-            # Filter out NaN and zero values
             valid = center_region[np.isfinite(center_region) & (center_region > 0)]
-
             if len(valid) == 0:
                 return False
 
             min_distance = float(np.min(valid))
-
             if min_distance < self.obstacle_distance:
-                self.get_logger().warn(
-                    f'Obstacle detected at {min_distance:.3f}m',
-                    throttle_duration_sec=1.0
-                )
                 return True
-
         except Exception as e:
-            self.get_logger().warn(
-                f'Depth processing error: {str(e)}',
-                throttle_duration_sec=2.0
-            )
-
+            pass
         return False
 
     def publish_emergency_stop(self, active: bool):
@@ -198,13 +170,10 @@ class SafetyMonitor(Node):
     def navigate_to_home(self):
         """Send Nav2 goal to return to home position in map frame."""
         if self.home_position is None:
-            self.get_logger().warn(
-                'No home position saved — AMCL may not have localized yet.',
-                throttle_duration_sec=2.0
-            )
+            self.get_logger().warn('No home position saved yet.', throttle_duration_sec=2.0)
             return
 
-        if not self._nav_client.wait_for_server(timeout_sec=5.0):  # increase from 2.0
+        if not self._nav_client.wait_for_server(timeout_sec=5.0):
             self.get_logger().warn('Nav2 action server not available')
             return
 
@@ -212,12 +181,7 @@ class SafetyMonitor(Node):
         goal.pose = self.home_position
         goal.pose.header.stamp = self.get_clock().now().to_msg()
 
-        self.get_logger().info(
-            f'Sending return-to-home goal: '
-            f'x={self.home_position.pose.position.x:.3f}, '
-            f'y={self.home_position.pose.position.y:.3f} (map frame)'
-        )
-
+        self.get_logger().info('Sending unique return-to-home goal to Nav2')
         send_goal_future = self._nav_client.send_goal_async(
             goal,
             feedback_callback=self.nav_feedback_callback
@@ -237,9 +201,11 @@ class SafetyMonitor(Node):
         result_future.add_done_callback(self.nav_result_callback)
 
     def nav_result_callback(self, future):
-        self.get_logger().info('Returned to home position successfully')
+        """Triggered once when Nav2 finishes its tracking path."""
+        self.get_logger().info('Returned to home position successfully!')
         self._returning = False
-        self.state = self.STATE_LOST
+        self.stop_robot()
+        self.state = self.STATE_ARRIVED # Fixed: Move to ARRIVED instead of LOST to prevent loops
 
     def nav_feedback_callback(self, feedback_msg):
         remaining = feedback_msg.feedback.distance_remaining
@@ -257,14 +223,10 @@ class SafetyMonitor(Node):
     def monitor_loop(self):
         """Main safety monitoring loop."""
         now = self.get_clock().now()
-
         self.obstacle_detected = self.check_obstacle()
 
         if self.state == self.STATE_FOLLOWING:
-
             if self.leader_too_close or self.obstacle_detected:
-                reason = 'leader too close' if self.leader_too_close else 'obstacle detected'
-                self.get_logger().warn(f'Emergency stop triggered: {reason}')
                 self.state = self.STATE_EMERGENCY
                 self.publish_emergency_stop(True)
                 self.stop_robot()
@@ -273,63 +235,43 @@ class SafetyMonitor(Node):
             if self.last_leader_time is not None:
                 time_since_leader = (now - self.last_leader_time).nanoseconds / 1e9
                 if time_since_leader > self.leader_timeout:
-                    self.get_logger().warn(
-                        f'Leader lost — last seen {time_since_leader:.1f}s ago. Starting recovery.'
-                    )
+                    self.get_logger().warn('Leader lost. Starting recovery rotation.')
                     self.state = self.STATE_RECOVERING
                     self.recovery_start_time = now
                     self.publish_emergency_stop(True)
 
         elif self.state == self.STATE_EMERGENCY:
-
             self.stop_robot()
-
             if not self.leader_too_close and not self.obstacle_detected:
-                self.get_logger().info('Emergency condition cleared — resuming following')
                 self.state = self.STATE_FOLLOWING
                 self.publish_emergency_stop(False)
 
         elif self.state == self.STATE_RECOVERING:
-
             recovery_elapsed = (now - self.recovery_start_time).nanoseconds / 1e9
-
             if recovery_elapsed < self.recovery_rotation_time:
                 self.rotate_for_recovery()
-                self.get_logger().info(
-                    f'Recovering — rotating to find leader '
-                    f'({recovery_elapsed:.1f}s / {self.recovery_rotation_time}s)',
-                    throttle_duration_sec=1.0
-                )
             else:
-                self.get_logger().warn(
-                    'Recovery failed — attempting return to home position'
-                )
+                self.get_logger().warn('Recovery failed — switching to home routing.')
                 self.state = self.STATE_LOST
                 self.stop_robot()
 
         elif self.state == self.STATE_LOST:
-
             if not self._returning:
                 self.navigate_to_home()
                 if self._returning:
                     self.state = self.STATE_RETURNING
                 else:
                     self.stop_robot()
-                    self.get_logger().warn(
-                        'Cannot return home — waiting for manual intervention',
-                        throttle_duration_sec=5.0
-                    )
 
         elif self.state == self.STATE_RETURNING:
+            # Let Nav2 work in the background. Do not re-request goals.
             if not self._returning:
-                # Goal was rejected, try again
-                self.get_logger().warn('Navigation failed, retrying...')
                 self.state = self.STATE_LOST
-            else:
-                self.get_logger().info(
-                    'Returning to home position...',
-                    throttle_duration_sec=5.0
-                )
+
+        elif self.state == self.STATE_ARRIVED:
+            # Safe hold state. Stop wheels completely.
+            self.stop_robot()
+            self.get_logger().info('Safe at home base. Standing by.', throttle_duration_sec=10.0)
 
 
 def main(args=None):

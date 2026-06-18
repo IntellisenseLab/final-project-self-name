@@ -10,7 +10,7 @@ def generate_launch_description():
     qbot_dir = get_package_share_directory('qbot_description')
     nav2_bringup_dir = get_package_share_directory('nav2_bringup')
     nav2_params = os.path.join(bringup_dir, 'config', 'nav2_params.yaml')
-    map_file = os.path.join(qbot_dir, 'maps', 'lab_map_7.yaml')
+    map_file = os.path.join(qbot_dir, 'maps', 'lab_map_9.yaml')
 
     standalone_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
