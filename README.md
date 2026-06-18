@@ -312,7 +312,7 @@ ros2 run safety_monitor safety_monitor --ros-args \
 
 ## Safety Behaviours
 
-The system implements a four-state safety state machine:
+The system implements a six-state safety state machine:
 
 | State | Trigger | Behaviour |
 |-------|---------|-----------|
@@ -321,6 +321,7 @@ The system implements a four-state safety state machine:
 | `recovering` | Leader not seen for `leader_timeout` seconds | Rotate to reacquire tag |
 | `lost` | Recovery rotation timed out | Attempt Nav2 return-to-home |
 | `returning` | Nav2 goal accepted | Navigate back to starting position |
+| `arrived` | Nav2 goal reached | Reached home base and awaiting another leader |
 
 ### Return-to-Home (Nav2)
 
