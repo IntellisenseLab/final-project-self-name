@@ -83,17 +83,38 @@ controller_server:
       yaw_goal_tolerance: 0.25
     FollowPath:
       plugin: "nav2_mppi_controller::MPPIController"
-      time_steps: 56
+      time_steps: 30          # Dropped from 56 to 30. Shrinking this lets it calculate faster and speed up quicker.
       model_dt: 0.1
       batch_size: 500
-      vx_max: 0.5
+      vx_max: 0.7             # Bumped from 0.5 to 0.7 m/s for a snappier linear speed.
       vx_min: -0.35
-      wz_max: 1.9
+      wz_max: 2.5             # Increased from 1.9 to 2.5 rad/s for faster turning capability.
       iteration_count: 1
       prune_distance: 1.7
       transform_tolerance: 0.1
       motion_model: "DiffDrive"
       visualize: false
+      
+      # MPPI Crucial Speed Critics (Add these explicitly if missing from your block)
+      critics: ["ConstraintCritic", "GoalCritic", "PathAlignCritic", "GoalAngleCritic", "PathFollowCritic"]
+      ConstraintCritic:
+        cost_power: 1
+        cost_weight: 4.0
+      GoalCritic:
+        cost_power: 1
+        cost_weight: 5.0
+      GoalAngleCritic:
+        cost_power: 1
+        cost_weight: 3.0
+      PathAlignCritic:
+        cost_power: 1
+        cost_weight: 3.0
+        trajectory_point_step: 3
+      PathFollowCritic:
+        cost_power: 1
+        cost_weight: 5.0       # Higher weight pulls the robot down its path with high velocity urgency.
+        offset_from_furthest: 4
+        trajectory_point_step: 2
 
 planner_server:
   ros__parameters:
@@ -102,7 +123,7 @@ planner_server:
     planner_plugins: ["GridBased"]
     GridBased:
       plugin: "nav2_navfn_planner::NavfnPlanner"
-      tolerance: 0.15
+      tolerance: 0.5
       use_astar: true
       allow_unknown: true
 
@@ -129,7 +150,7 @@ behavior_server:
     robot_base_frame: base_link
     transform_tolerance: 0.1
     simulate_ahead_time: 2.0
-    max_rotational_vel: 1.0
+    max_rotational_vel: 2.0         # Raised from 1.0 to 2.0 rad/s
     min_rotational_vel: 0.4
     rotational_acc_lim: 3.2
 
@@ -139,10 +160,10 @@ velocity_smoother:
     enable_stamped_cmd_vel: false
     smoothing_frequency: 20.0
     feedback: "OPEN_LOOP"
-    max_velocity: [0.5, 0.0, 2.0]
-    min_velocity: [-0.5, 0.0, -2.0]
-    max_accel: [2.5, 0.0, 3.2]
-    max_decel: [-2.5, 0.0, -3.2]
+    max_velocity: [0.7, 0.0, 2.5]   # Matches your MPPI constraints [vx_max, vy_max, wz_max]
+    min_velocity: [-0.35, 0.0, -2.5]
+    max_accel: [3.0, 0.0, 3.5]      # Raised slightly to give it punchier acceleration profile
+    max_decel: [-3.0, 0.0, -3.5]
     odom_topic: "/odom"
     odom_duration: 0.1
     deadband_velocity: [0.0, 0.0, 0.0]
@@ -208,7 +229,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.5
+        inflation_radius: 0.3
 
 global_costmap:
   global_costmap:
@@ -236,8 +257,8 @@ global_costmap:
         map_subscribe_transient_local: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0
-        inflation_radius: 0.40
+        cost_scaling_factor: 4.5
+        inflation_radius: 0.35
 
 docking_server:
   ros__parameters:
