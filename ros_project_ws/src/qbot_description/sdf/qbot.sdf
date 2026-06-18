@@ -5,7 +5,7 @@
 
         <!-- ROS2 Control Plugin -->
         <plugin name="gz_ros2_control::GazeboSimROS2ControlPlugin" filename="libgz_ros2_control-system.so">
-            <parameters>/home/senadi/Desktop/lab-06-SenadiF/CS3340-Workspace/src/qbot_description/config/qbot_controllers.yaml</parameters>
+            <parameters>/home/hg/Documents/Robotics Labs/Project/final-project-self-name/ros_project_ws/src/qbot_description/config/qbot_controllers.yaml</parameters>
             <controller_manager_prefix_node_name>robot1</controller_manager_prefix_node_name>
         </plugin>
 

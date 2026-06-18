@@ -115,7 +115,7 @@
     </visual>
   </link>
 
- <link name="lidar_link">
+ <link name="base_laser">
   <visual>
     <geometry><cylinder radius="0.03" length="0.05"/></geometry>
   </visual>
@@ -173,13 +173,13 @@
 
   <joint name="lidar_joint" type="fixed">
   <parent link="base_link"/>
-  <child link="lidar_link"/>
+  <child link="base_laser"/>
   <origin xyz="0 0 0.12" rpy="0 0 0"/>
 </joint>
 
-   <gazebo reference="lidar_link">
+   <gazebo reference="base_laser">
    <sensor name="lidar" type="gpu_lidar">
-     <gz_frame_id>lidar_link</gz_frame_id> 
+     <gz_frame_id>base_laser</gz_frame_id> 
      <topic>scan</topic>
      <update_rate>10</update_rate>
      <ray>
@@ -224,7 +224,7 @@
 
 <gazebo>
   <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
-    <parameters>/home/senadi/Desktop/final-project-self-name/ros_project_ws/src/qbot_description/config/qbot_controllers.yaml</parameters>
+    <parameters>/home/hg/Documents/Robotics Labs/Project/final-project-self-name/ros_project_ws/src/qbot_description/config/qbot_controllers.yaml</parameters>
   </plugin>
 </gazebo>
 
