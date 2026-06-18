@@ -2,11 +2,10 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
-from geometry_msgs.msg import Twist, PoseStamped
+from geometry_msgs.msg import Twist, PoseStamped, PoseWithCovarianceStamped
 from nav2_msgs.action import NavigateToPose
 from sensor_msgs.msg import Image
 from std_msgs.msg import Bool
-from nav_msgs.msg import Odometry
 import math
 import numpy as np
 
@@ -70,11 +69,11 @@ class SafetyMonitor(Node):
             10
         )
 
-        # Replace amcl_sub with:
-        self.odom_sub = self.create_subscription(
-            Odometry,
-            '/odom',
-            self.odom_callback,
+        # Subscribe to amcl_pose to get localized position in map frame
+        self.amcl_sub = self.create_subscription(
+            PoseWithCovarianceStamped,
+            '/amcl_pose',
+            self.amcl_callback,
             10
         )
 
@@ -96,19 +95,19 @@ class SafetyMonitor(Node):
             f'Recovery speed: {self.recovery_angular_speed}'
         )
 
-    def odom_callback(self, msg: Odometry):
-        """Save first received odom pose as home position."""
+    def amcl_callback(self, msg: PoseWithCovarianceStamped):
+        """Save first received AMCL pose as home position in map frame."""
         if not self.home_saved:
-            # Convert Odometry to PoseStamped
             self.home_position = PoseStamped()
-            self.home_position.header.frame_id = 'odom'
+            self.home_position.header.frame_id = 'map'
             self.home_position.header.stamp = self.get_clock().now().to_msg()
             self.home_position.pose = msg.pose.pose
             self.home_saved = True
             x = msg.pose.pose.position.x
             y = msg.pose.pose.position.y
-            self.get_logger().info(f'Home position saved: x={x:.3f}, y={y:.3f}')
-
+            self.get_logger().info(
+                f'Home position saved from AMCL: x={x:.3f}, y={y:.3f} (map frame)'
+            )
 
     def pose_callback(self, msg: PoseStamped):
         """Update last known leader pose and time."""
@@ -146,15 +145,21 @@ class SafetyMonitor(Node):
             return False
 
         try:
-            depth_data = np.frombuffer(self.latest_depth_image.data, dtype=np.float32)
+            # Kinect v1 publishes 16UC1 depth in millimetres
+            depth_data = np.frombuffer(self.latest_depth_image.data, dtype=np.uint16)
             depth_array = depth_data.reshape(
                 self.latest_depth_image.height,
                 self.latest_depth_image.width
-            )
+            ).astype(np.float32) / 1000.0  # convert mm to metres
 
-            # Convert from mm to metres
-            depth_array = depth_array.astype(np.float32) / 1000.0
+            # Look at the central 30% of the image — directly ahead of robot
+            h, w = depth_array.shape
+            center_region = depth_array[
+                int(h * 0.35):int(h * 0.65),
+                int(w * 0.35):int(w * 0.65)
+            ]
 
+            # Filter out NaN and zero values
             valid = center_region[np.isfinite(center_region) & (center_region > 0)]
 
             if len(valid) == 0:
@@ -191,18 +196,16 @@ class SafetyMonitor(Node):
         self.cmd_vel_pub.publish(cmd)
 
     def navigate_to_home(self):
-        """Send Nav2 goal to return to home position."""
+        """Send Nav2 goal to return to home position in map frame."""
         if self.home_position is None:
             self.get_logger().warn(
-                'No home position saved — cannot return home. '
-                'AMCL may not have localized yet.'
+                'No home position saved — AMCL may not have localized yet.',
+                throttle_duration_sec=2.0
             )
             return
 
-        if not self._nav_client.wait_for_server(timeout_sec=2.0):
-            self.get_logger().warn(
-                'Nav2 action server not available — cannot return home.'
-            )
+        if not self._nav_client.wait_for_server(timeout_sec=5.0):  # increase from 2.0
+            self.get_logger().warn('Nav2 action server not available')
             return
 
         goal = NavigateToPose.Goal()
@@ -212,7 +215,7 @@ class SafetyMonitor(Node):
         self.get_logger().info(
             f'Sending return-to-home goal: '
             f'x={self.home_position.pose.position.x:.3f}, '
-            f'y={self.home_position.pose.position.y:.3f}'
+            f'y={self.home_position.pose.position.y:.3f} (map frame)'
         )
 
         send_goal_future = self._nav_client.send_goal_async(
@@ -223,7 +226,6 @@ class SafetyMonitor(Node):
         self._returning = True
 
     def nav_goal_response_callback(self, future):
-        """Called when Nav2 accepts or rejects the goal."""
         self._nav_goal_handle = future.result()
         if not self._nav_goal_handle.accepted:
             self.get_logger().warn('Return-to-home goal rejected by Nav2')
@@ -235,23 +237,18 @@ class SafetyMonitor(Node):
         result_future.add_done_callback(self.nav_result_callback)
 
     def nav_result_callback(self, future):
-        """Called when navigation completes."""
-        result = future.result().result
         self.get_logger().info('Returned to home position successfully')
         self._returning = False
-        self.state = self.STATE_LOST  # stay lost, wait for manual intervention
+        self.state = self.STATE_LOST
 
     def nav_feedback_callback(self, feedback_msg):
-        """Log navigation progress."""
-        feedback = feedback_msg.feedback
-        remaining = feedback.distance_remaining
+        remaining = feedback_msg.feedback.distance_remaining
         self.get_logger().info(
             f'Returning home — distance remaining: {remaining:.2f}m',
             throttle_duration_sec=2.0
         )
 
     def cancel_navigation(self):
-        """Cancel active Nav2 goal."""
         if self._nav_goal_handle is not None:
             self._nav_goal_handle.cancel_goal_async()
             self._nav_goal_handle = None
@@ -261,7 +258,6 @@ class SafetyMonitor(Node):
         """Main safety monitoring loop."""
         now = self.get_clock().now()
 
-        # Check for obstacles
         self.obstacle_detected = self.check_obstacle()
 
         if self.state == self.STATE_FOLLOWING:
@@ -318,7 +314,6 @@ class SafetyMonitor(Node):
                 if self._returning:
                     self.state = self.STATE_RETURNING
                 else:
-                    # Nav2 not available — just stop and wait
                     self.stop_robot()
                     self.get_logger().warn(
                         'Cannot return home — waiting for manual intervention',
@@ -326,12 +321,15 @@ class SafetyMonitor(Node):
                     )
 
         elif self.state == self.STATE_RETURNING:
-
-            self.get_logger().info(
-                'Returning to home position...',
-                throttle_duration_sec=5.0
-            )
-            # Nav2 handles movement — don't publish cmd_vel here
+            if not self._returning:
+                # Goal was rejected, try again
+                self.get_logger().warn('Navigation failed, retrying...')
+                self.state = self.STATE_LOST
+            else:
+                self.get_logger().info(
+                    'Returning to home position...',
+                    throttle_duration_sec=5.0
+                )
 
 
 def main(args=None):

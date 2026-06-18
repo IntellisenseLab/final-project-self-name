@@ -60,3 +60,6 @@ def generate_launch_description():
         # Delay Nav2 further to let SLAM build initial map
         TimerAction(period=15.0, actions=[nav2_launch]),
     ])
+# ros2 launch slam_toolbox online_async_launch.py slam_params_file:=/home/buvindu/final-project-self-name/ros_project_ws/install/qbot_description/share/qbot_description/config/slam.yaml
+# ros2 service call /slam_toolbox/save_map slam_toolbox/srv/SaveMap "name: {data: '/home/buvindu/lab_map'}"
+# scp buvindu@qbot-pi.local:lab_map_new3.pgm ~/Desktop/
